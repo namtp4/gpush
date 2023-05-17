@@ -1,0 +1,76 @@
+#!/bin/bash
+your_Commit=$2
+remote=${3:-origin}
+# NAVIGATE TO CURRENT DIRECTORY
+cd $PWD
+default_branch=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+cur_Branch=$(git rev-parse --abbrev-ref HEAD)
+
+wait_time(){
+  echo "===> Yes, my Lord! I will push your commit "\""${your_Commit}"\"" to the branch "\""${cur_Branch}"\"" in remote "\""${remote}"\"" "
+  sleep 1
+  echo "===> 3 seconds..."
+  sleep 1
+  echo "===> 2 seconds..."
+  sleep 1
+  echo "===> 1 seconds..."
+  sleep 1
+  echo "===> Starting Push process ..."
+}
+
+push(){
+  echo "Push process ............"
+  git add -A
+  git commit -m "${your_Commit}"
+  git push ${remote} ${cur_Branch}
+}
+
+fpush(){
+  echo "Push process and rebase with default branch"
+  git add -A
+  git commit -m "${your_Commit}"
+  git checkout ${default_branch}
+  git fetch && git pull origin ${default_branch}
+  git checkout ${cur_Branch}
+  git rebase ${default_branch}
+  git push ${remote} ${cur_Branch} -f
+}
+
+while getopts ":fp" opt; do
+  case $opt in
+    f)
+      wait_time
+      if [ -z "$your_Commit" ] 
+      then
+        echo "You forgot the Comment"
+      else
+        fpush
+      fi
+      if [ $? -eq 0 ] 
+      then
+          echo "===> Push process was successful"
+      else
+          echo "===> Push process failed"
+      fi
+      ;;
+    p)
+      wait_time
+      if [ -z "$your_Commit" ] 
+      then
+        echo "You forgot the Comment"
+      else
+        push
+      fi
+      if [ $? -eq 0 ] 
+      then
+          echo "===> Push process was successful"
+      else
+          echo "===> Push process failed"
+      fi
+    ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
