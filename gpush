@@ -1,13 +1,16 @@
 #!/bin/bash
-your_Commit=$2
-remote=${3:-origin}
-# NAVIGATE TO CURRENT DIRECTORY
-cd $PWD
+
+# DEFINE VARIABLES
 default_branch=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
 cur_Branch=$(git rev-parse --abbrev-ref HEAD)
+opt_remote=origin
+opt_push=0
+opt_fpush=0
+opt_empty=0
+opt_amend=0
 
 wait_time(){
-  echo "===> Yes, my Lord! I will push your commit "\""${your_Commit}"\"" to the branch "\""${cur_Branch}"\"" in remote "\""${remote}"\"" "
+  echo "===> Yes, my Lord! I will push your commit "\""${your_Commit}"\"" to the branch "\""${cur_Branch}"\"" in remote "\""${opt_remote}"\"" "
   sleep 1
   echo "===> 3 seconds..."
   sleep 1
@@ -18,59 +21,173 @@ wait_time(){
   echo "===> Starting Push process ..."
 }
 
+comment(){
+  local comment=$1
+  printf '%s\n' "################################################"
+  echo "# $comment"
+  printf '%s\n' "################################################"
+}
+
+# Function to display usage information
+display_usage() {
+    echo "Usage: gpush [OPTIONS]"
+    echo "Options:"
+    echo "  -p, --push               add all change & commit code & push to current branch"
+    echo "  -f, --force              add all change & commit code & rebase default branch & force push to current branch"
+    echo "  -e, --empty              allow push empty commit"
+    echo "  -a, --amend              allow commit --amend --no-edit & force push"
+    echo "  -m, --message MASSAGE    commit message"
+    echo "  -r, --remote REMOTE      set upstream for git pull/status"
+    echo "  -h, --help               display this help message"
+}
+
 push(){
   echo "Push process ............"
   git add -A
+  comment "COMMITING $your_Commit"
   git commit -m "${your_Commit}"
-  git push ${remote} ${cur_Branch}
+  comment "PUSH COMMIT TO $opt_remote $cur_Branch"
+  git push ${opt_remote} ${cur_Branch}
+}
+
+empty_commit(){
+  echo "Push empty commit"
+  comment "COMMITING $your_Commit"
+  git commit --allow-empty -m "${your_Commit}"
+  comment "PUSH COMMIT TO $opt_remote $cur_Branch"
+  git push ${opt_remote} ${cur_Branch} -f
+}
+
+amend_commit(){
+  echo "Commit amend"
+  comment "COMMITING AMEND"
+  git commit --amend --no-edit
+  comment "PUSH COMMIT TO $opt_remote $cur_Branch"
+  git push ${opt_remote} ${cur_Branch} -f
 }
 
 fpush(){
   echo "Push process and rebase with default branch"
   git add -A
+  comment "COMMITING $your_Commit"
   git commit -m "${your_Commit}"
+  comment "CHECKOUTING $default_branch"
   git checkout ${default_branch}
-  git fetch && git pull origin ${default_branch}
+  comment "FETCH AND PULL $opt_remote $default_branch" 
+  git fetch && git pull ${opt_remote} ${default_branch}
+  comment "CHECKOUTING $cur_Branch"
   git checkout ${cur_Branch}
+  comment "REBASE $cur_Branch WITH $default_branch"
   git rebase ${default_branch}
-  git push ${remote} ${cur_Branch} -f
+  comment "FORCE PUSH COMMIT TO $opt_remote $cur_Branch"
+  git push ${opt_remote} ${cur_Branch} -f
 }
 
-while getopts ":fp" opt; do
-  case $opt in
-    f)
-      wait_time
-      if [ -z "$your_Commit" ] 
-      then
-        echo "You forgot the Comment"
-      else
-        fpush
-      fi
-      if [ $? -eq 0 ] 
-      then
-          echo "===> Push process was successful"
-      else
-          echo "===> Push process failed"
-      fi
-      ;;
-    p)
-      wait_time
-      if [ -z "$your_Commit" ] 
-      then
-        echo "You forgot the Comment"
-      else
-        push
-      fi
-      if [ $? -eq 0 ] 
-      then
-          echo "===> Push process was successful"
-      else
-          echo "===> Push process failed"
-      fi
-    ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      exit 1
-      ;;
-  esac
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -m | --message)
+            if [[ -n $2 ]]; then
+                your_Commit=$2
+                shift 2
+            else
+                echo "Error: -m or --message option requires an argument"
+                display_usage
+                exit 1
+            fi
+            ;;
+        -r | --remote)
+            if [[ -n $2 ]]; then
+                opt_remote=$2
+                shift 2
+            else
+                echo "Error: -r or --remote option requires an argument"
+                display_usage
+                exit 1
+            fi
+            ;;
+        -p | --push)
+            opt_push=1
+            shift
+            ;;
+        -f | --force)
+            opt_fpush=1
+            shift
+            ;;
+        -e | --empty)
+            opt_empty=1
+            shift
+            ;;
+        -q | --amend)
+            opt_amend=1
+            shift
+            ;;
+        -h | --help)
+            display_usage
+            exit 0
+            ;;
+        *)
+            echo "Error: Invalid option '$1'"
+            display_usage
+            exit 1
+            ;;
+    esac
 done
+
+if [[ $opt_push -eq 1 ]]; then
+  wait_time
+  if [ -z "$your_Commit" ] 
+  then
+    echo "You forgot the Comment"
+  else
+    push
+  fi
+  if [ $? -eq 0 ] 
+  then
+      echo "===> Push process was successful"
+  else
+      echo "===> Push process failed"
+  fi
+fi
+
+if [[ $opt_fpush -eq 1 ]]; then
+  wait_time
+  if [ -z "$your_Commit" ] 
+  then
+    echo "You forgot the Comment"
+  else
+    fpush
+  fi
+  if [ $? -eq 0 ] 
+  then
+      echo "===> Push process was successful"
+  else
+      echo "===> Push process failed"
+  fi
+fi
+
+if [[ $opt_empty -eq 1 ]]; then
+  wait_time
+  if [ -z "$your_Commit" ] 
+  then
+    echo "You forgot the Comment"
+  else
+    empty_commit
+  fi
+  if [ $? -eq 0 ] 
+  then
+      echo "===> Push process was successful"
+  else
+      echo "===> Push process failed"
+  fi
+fi
+
+if [[ $opt_amend -eq 1 ]]; then
+  wait_time
+  amend_commit
+  if [ $? -eq 0 ] 
+  then
+      echo "===> Push process was successful"
+  else
+      echo "===> Push process failed"
+  fi
+fi
