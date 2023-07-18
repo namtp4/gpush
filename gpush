@@ -61,6 +61,7 @@ empty_commit(){
 amend_commit(){
   echo "Commit amend"
   comment "COMMITING AMEND"
+  git add -A
   git commit --amend --no-edit
   comment "PUSH COMMIT TO $opt_remote $cur_Branch"
   git push ${opt_remote} ${cur_Branch} -f
