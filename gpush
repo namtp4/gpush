@@ -72,16 +72,13 @@ fpush(){
   git add -A
   comment "COMMITING $your_Commit"
   git commit -m "${your_Commit}"
-  comment "CHECKOUTING $default_branch"
-  git checkout ${default_branch}
-  comment "FETCH AND PULL $opt_remote $default_branch" 
-  git fetch && git pull ${opt_remote} ${default_branch}
-  comment "CHECKOUTING $cur_Branch"
-  git checkout ${cur_Branch}
-  comment "REBASE $cur_Branch WITH $default_branch"
-  git rebase ${default_branch}
+
+  comment "Rebase branch $cur_Branch with $default_branch"
+  git pull $opt_remote $default_branch --rebase
+
   comment "FORCE PUSH COMMIT TO $opt_remote $cur_Branch"
   git push ${opt_remote} ${cur_Branch} -f
+
 }
 
 while [[ $# -gt 0 ]]; do
